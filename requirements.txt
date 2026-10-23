@@ -1,0 +1,2 @@
+﻿# A solução utiliza apenas a biblioteca padrão do Python.
+# Não há dependências externas obrigatórias.

@@ -1,0 +1,58 @@
+﻿name: Monitor arXiv
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 12 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arxiv-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Obter codigo e estado mais recentes
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Preparar pastas
+        run: mkdir -p state data reports
+
+      - name: Executar testes
+        run: python -m unittest discover -s tests -v
+
+      - name: Executar monitor
+        run: python src/run.py
+
+      - name: Preservar banco entre execucoes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/papers.db
+          if ! git diff --cached --quiet; then
+            git commit -m "Atualiza estado do monitor arXiv"
+            git push origin HEAD:main
+          fi
+
+      - name: Disponibilizar relatorio e avaliacoes
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-arxiv-${{ github.run_number }}
+          path: |
+            reports/latest.html
+            data/evaluated.json
+          if-no-files-found: error
+          retention-days: 30
